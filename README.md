@@ -519,3 +519,9 @@ A: 编辑 `config.json` 中的 `interval_minutes`，然后重新执行 `schedule
 - matplotlib — 数据可视化（可选）
 - Windows Task Scheduler (schtasks) — 定时任务
 - Windows Toast Notifications — 超时提醒通知
+
+## 许可证
+
+版权所有 © 2026 [KK-Irving](https://github.com/KK-Irving)
+
+本项目采用 [MIT 许可证](LICENSE) 开源。
