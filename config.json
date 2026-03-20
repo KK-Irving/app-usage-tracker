@@ -1,0 +1,14 @@
+{
+  "interval_minutes": 60,
+  "top_processes": 50,
+  "exclude_system": true,
+  "app_categories": {
+    "工作": ["chrome.exe", "DingTalk.exe", "msedgewebview2.exe", "powershell.exe", "python.exe", "code.exe", "Code.exe", "WINWORD.EXE", "EXCEL.EXE", "OUTLOOK.EXE", "Teams.exe", "slack.exe", "Notion.exe", "Obsidian.exe"],
+    "社交": ["WeChatAppEx.exe", "QQ.exe", "Telegram.exe", "Discord.exe", "WhatsApp.exe"],
+    "娱乐": ["chrome.exe", "msedge.exe", "Spotify.exe", "Steam.exe", "EpicGamesLauncher.exe"],
+    "开发": ["Code.exe", "code.exe", "python.exe", "node.exe", "git.exe", "Docker Desktop.exe"],
+    "系统": ["explorer.exe", "System Idle Process", "csrss.exe", "services.exe", "lsass.exe"]
+  },
+  "focus_apps": ["chrome.exe", "Code.exe", "code.exe", "python.exe", "powershell.exe"],
+  "fragment_time_threshold_minutes": 5
+}

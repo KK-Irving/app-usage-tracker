@@ -1,0 +1,22 @@
+{
+  "开发": {
+    "color": "🟣",
+    "apps": ["python", "java", "node", "npm", "git", "docker", "idea64", "pycharm", "webstorm", "sublime", "gitkraken"]
+  },
+  "工作": {
+    "color": "🔵",
+    "apps": ["chrome", "msedge", "firefox", "vscode", "code", "notepad++", "powershell", "cmd", "DingTalk", "钉钉", "企业微信", "飞书", "outlook", "teams", "slack", "zoom"]
+  },
+  "社交": {
+    "color": "🟡",
+    "apps": ["微信", "WeChat", "QQ", "Telegram", "Discord", "WhatsApp"]
+  },
+  "娱乐": {
+    "color": "🔴",
+    "apps": ["Spotify", "网易云音乐", "vlc", "Steam", "epic", "bilibili", "PotPlayer"]
+  },
+  "系统": {
+    "color": "⚪",
+    "apps": ["explorer", "System", "svchost", "RuntimeBroker", "csrss", "services"]
+  }
+}
