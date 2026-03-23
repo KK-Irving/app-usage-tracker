@@ -1,0 +1,29 @@
+# App Usage Tracker V2 — 依赖清单
+# 一键安装: pip install -r requirements.txt
+
+# === 核心依赖（必需） ===
+psutil>=5.9.0
+
+# === V2 功能依赖（推荐全部安装） ===
+
+# 前台窗口检测（Windows API）
+pywin32>=306
+
+# Web 仪表盘
+flask>=3.0.0
+
+# 系统托盘
+pystray>=0.19.0
+Pillow>=10.0.0
+
+# 可视化图表
+matplotlib>=3.7.0
+
+# === 可选依赖 ===
+# S3 多设备同步（仅使用 S3 远程存储时需要，取消注释即可）
+# boto3>=1.28.0
+
+# === 开发/测试依赖 ===
+# pytest>=7.0.0
+# hypothesis>=6.0.0
+# pytest-cov>=4.0.0

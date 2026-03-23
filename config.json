@@ -2,6 +2,12 @@
   "interval_minutes": 60,
   "top_processes": 50,
   "exclude_system": true,
+  "storage_backend": "sqlite",
+  "foreground_interval_seconds": 1,
+  "tray_enabled": true,
+  "tray_refresh_seconds": 60,
+  "web_host": "127.0.0.1",
+  "web_port": 8080,
   "app_categories": {
     "工作": ["chrome.exe", "DingTalk.exe", "msedgewebview2.exe", "powershell.exe", "python.exe", "code.exe", "Code.exe", "WINWORD.EXE", "EXCEL.EXE", "OUTLOOK.EXE", "Teams.exe", "slack.exe", "Notion.exe", "Obsidian.exe"],
     "社交": ["WeChatAppEx.exe", "QQ.exe", "Telegram.exe", "Discord.exe", "WhatsApp.exe"],

@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}仪表盘 - App Usage Tracker{% endblock %}
+{% block content %}
+<div class="filters">
+    <label>日期:</label>
+    <input type="date" id="dateStart" />
+    <label>至</label>
+    <input type="date" id="dateEnd" />
+    <label>分类:</label>
+    <select id="categoryFilter">
+        <option value="">全部</option>
+        <option value="开发">开发</option>
+        <option value="工作">工作</option>
+        <option value="社交">社交</option>
+        <option value="娱乐">娱乐</option>
+        <option value="其他">其他</option>
+    </select>
+</div>
+<div class="grid">
+    <div class="card">
+        <h3>📊 今日概览</h3>
+        <div id="todaySummary"><div class="no-data">加载中...</div></div>
+    </div>
+    <div class="card">
+        <h3>🥧 分类占比</h3>
+        <div id="pieChart" class="chart"></div>
+    </div>
+</div>
+<div class="card">
+    <h3>🏆 Top 5 应用</h3>
+    <div id="barChart" class="chart"></div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const today = new Date().toISOString().slice(0, 10);
+document.getElementById('dateStart').value = today;
+document.getElementById('dateEnd').value = today;
+
+async function loadData() {
+    const start = document.getElementById('dateStart').value;
+    const end = document.getElementById('dateEnd').value;
+    const cat = document.getElementById('categoryFilter').value;
+    let url = `/api/usage?start=${start}&end=${end}`;
+    if (cat) url += `&category=${encodeURIComponent(cat)}`;
+
+    // Today summary
+    const todayRes = await fetch('/api/usage/today');
+    const todayData = await todayRes.json();
+    const summaryEl = document.getElementById('todaySummary');
+    if (todayData.total_minutes > 0) {
+        const hrs = Math.floor(todayData.total_minutes / 60);
+        const mins = Math.round(todayData.total_minutes % 60);
+        summaryEl.innerHTML = `<div class="stat-value">${hrs}h ${mins}m</div><div class="stat-label">今日总使用时长</div>`;
+    } else {
+        summaryEl.innerHTML = '<div class="no-data">暂无数据</div>';
+    }
+
+    // Pie chart
+    const catRes = await fetch(`/api/usage/categories?date=${start}`);
+    const catData = await catRes.json();
+    const pieChart = echarts.init(document.getElementById('pieChart'));
+    if (catData.categories && catData.categories.length > 0) {
+        pieChart.setOption({
+            tooltip: { trigger: 'item', formatter: '{b}: {c}min ({d}%)' },
+            series: [{ type: 'pie', radius: '65%', data: catData.categories.map(c => ({ name: c.name, value: Math.round(c.minutes) })) }]
+        });
+    }
+
+    // Bar chart - top apps
+    if (todayData.top_apps && todayData.top_apps.length > 0) {
+        const barChart = echarts.init(document.getElementById('barChart'));
+        const apps = todayData.top_apps.reverse();
+        barChart.setOption({
+            tooltip: {},
+            xAxis: { type: 'value', name: '分钟' },
+            yAxis: { type: 'category', data: apps.map(a => a.name) },
+            series: [{ type: 'bar', data: apps.map(a => Math.round(a.minutes)), itemStyle: { color: '#3498db' } }]
+        });
+    }
+}
+
+document.getElementById('dateStart').addEventListener('change', loadData);
+document.getElementById('dateEnd').addEventListener('change', loadData);
+document.getElementById('categoryFilter').addEventListener('change', loadData);
+loadData();
+</script>
+{% endblock %}

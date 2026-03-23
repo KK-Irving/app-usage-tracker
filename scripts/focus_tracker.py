@@ -31,7 +31,15 @@ def load_config():
 
 
 def load_focus_data():
-    """加载专注数据"""
+    """加载专注数据（优先使用 DataStore）"""
+    try:
+        from scripts.data_store import DataStore
+        store = DataStore()
+        sessions = store.get_focus_sessions()
+        store.close()
+        return {"sessions": sessions, "daily_stats": {}}
+    except Exception:
+        pass
     if FOCUS_FILE.exists():
         with open(FOCUS_FILE, 'r', encoding='utf-8') as f:
             return json.load(f)
@@ -39,7 +47,24 @@ def load_focus_data():
 
 
 def save_focus_data(data):
-    """保存专注数据"""
+    """保存专注数据（同时写入 DataStore 和 JSON）"""
+    # V2: 写入 DataStore
+    try:
+        from scripts.data_store import DataStore
+        store = DataStore()
+        for session in data.get("sessions", []):
+            if not session.get("_saved"):
+                store.save_focus_session({
+                    "date": session.get("date", ""),
+                    "duration_minutes": session.get("duration_minutes", session.get("duration", 0)),
+                    "timestamp": session.get("timestamp", ""),
+                    "app_name": session.get("app_name", session.get("app", "")),
+                    "category": session.get("category", ""),
+                })
+        store.close()
+    except Exception:
+        pass
+    # V1 兼容: 也写入 JSON
     FOCUS_FILE.parent.mkdir(parents=True, exist_ok=True)
     with open(FOCUS_FILE, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
@@ -162,6 +187,26 @@ def analyze_daily_focus(date_str=None):
             print(f"    {cat:<6} {bar} {hrs}h {m}m ({pct:.0f}%)")
 
     print("=" * 60)
+
+    # V2: 切换频率-专注度相关性
+    try:
+        from scripts.data_store import DataStore
+        from scripts.switch_analyzer import SwitchAnalyzer
+        store = DataStore()
+        sa = SwitchAnalyzer(store)
+        corr_data = sa.get_switch_focus_correlation(date_str)
+        store.close()
+        if corr_data.get("hourly_data"):
+            print(f"\n🔄 切换频率-专注度相关性: {corr_data['correlation']:.2f}")
+            if corr_data['correlation'] < -0.3:
+                print("  → 切换越频繁，专注度越低（负相关）")
+            elif corr_data['correlation'] > 0.3:
+                print("  → 切换与专注度正相关（可能是多任务高效模式）")
+            else:
+                print("  → 切换频率与专注度无明显相关性")
+    except Exception:
+        pass
+
     return score, sessions
 
 

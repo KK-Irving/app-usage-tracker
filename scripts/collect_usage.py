@@ -95,19 +95,29 @@ def save_today_data(data):
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 
-def collect(config=None):
+def collect(config=None, foreground_detector=None):
     """
     执行一次数据采集
+    V2: 通过 DataStore 写入，支持前台检测字段
     Args:
         config: 可选配置覆盖，默认从 config.json 读取
+        foreground_detector: 可选 ForegroundDetector 实例
     """
     if config is None:
         config = load_config()
 
     top_n = config.get('top_processes', 50)
     exclude_system = config.get('exclude_system', True)
+    backend = config.get('storage_backend', 'sqlite')
 
     print(f"🕐 [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 开始采集应用使用数据...")
+
+    # 获取前台应用名称
+    fg_app = None
+    if foreground_detector:
+        fg_info = foreground_detector.get_current_foreground()
+        if fg_info:
+            fg_app = fg_info.get("app_name")
 
     processes = get_process_usage(top_n=top_n, exclude_system=exclude_system)
 
@@ -117,26 +127,48 @@ def collect(config=None):
 
     print(f"📊 获取到 {len(processes)} 个进程")
 
-    data = load_today_data()
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     hour = datetime.now().hour
+    today = datetime.now().strftime("%Y-%m-%d")
 
+    records = []
     for proc in processes:
-        record = {'timestamp': timestamp, 'hour': hour, **proc}
-        data['records'].append(record)
+        is_fg = 1 if (fg_app and proc['Name'].lower() == fg_app.lower()) else 0
+        record = {
+            'timestamp': timestamp, 'hour': hour,
+            'name': proc['Name'], 'Name': proc['Name'],
+            'category': proc['Category'], 'Category': proc['Category'],
+            'cpu': proc['CPU'], 'CPU': proc['CPU'],
+            'memory_mb': proc['MemoryMB'], 'MemoryMB': proc['MemoryMB'],
+            'duration_minutes': proc['DurationMinutes'], 'DurationMinutes': proc['DurationMinutes'],
+            'is_foreground': is_fg,
+            'foreground_minutes': proc['DurationMinutes'] if is_fg else 0,
+            'device_id': 'local',
+        }
+        records.append(record)
 
-    save_today_data(data)
+    # V2: 通过 DataStore 写入
+    try:
+        from scripts.data_store import DataStore
+        store = DataStore(backend=backend)
+        store.save_usage_records(records, today)
+        store.close()
+    except Exception:
+        # 回退到 V1 JSON 写入
+        data = load_today_data()
+        data['records'].extend(records)
+        save_today_data(data)
 
     # 显示汇总
     stats = defaultdict(lambda: {'duration': 0, 'cpu_peak': 0, 'count': 0, 'category': ''})
-    for r in data['records']:
+    for r in records:
         name = r.get('Name', 'Unknown')
         stats[name]['duration'] += r.get('DurationMinutes', 0)
         stats[name]['cpu_peak'] = max(stats[name]['cpu_peak'], r.get('CPU', 0))
         stats[name]['count'] += 1
         stats[name]['category'] = r.get('Category', '其他')
 
-    print(f"\n📈 今日累计 ({len(data['records'])} 条记录):")
+    print(f"\n📈 本次采集 ({len(records)} 条记录):")
     sorted_stats = sorted(stats.items(), key=lambda x: x[1]['duration'], reverse=True)
     for name, stat in sorted_stats[:5]:
         hrs = int(stat['duration'] // 60)

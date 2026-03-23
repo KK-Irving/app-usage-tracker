@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}目标达成 - App Usage Tracker{% endblock %}
+{% block content %}
+<div class="card">
+    <h3>🎯 目标达成率</h3>
+    <div id="goalsList"><div class="no-data">加载中...</div></div>
+</div>
+{% endblock %}
+{% block scripts %}
+<style>
+    .goal-item { margin-bottom: 16px; }
+    .goal-header { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 14px; }
+    .goal-bar { height: 24px; background: #ecf0f1; border-radius: 12px; overflow: hidden; }
+    .goal-fill { height: 100%; border-radius: 12px; transition: width 0.5s; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 12px; font-weight: bold; min-width: 40px; }
+    .goal-fill.achieved { background: #27ae60; }
+    .goal-fill.not-achieved { background: #e74c3c; }
+    .goal-type { font-size: 12px; color: #999; }
+</style>
+<script>
+async function loadGoals() {
+    const res = await fetch('/api/goals');
+    const data = await res.json();
+    const el = document.getElementById('goalsList');
+    if (!data.goals || data.goals.length === 0) {
+        el.innerHTML = '<div class="no-data">暂无目标配置，请通过命令行添加: goals --add</div>';
+        return;
+    }
+    el.innerHTML = data.goals.map(g => {
+        const pct = Math.min(g.rate, 200);
+        const cls = g.achieved ? 'achieved' : 'not-achieved';
+        const typeLabel = g.type === 'min' ? '≥' : '≤';
+        const hrs = Math.floor(g.target_minutes / 60);
+        const mins = Math.round(g.target_minutes % 60);
+        const actualHrs = Math.floor(g.actual_minutes / 60);
+        const actualMins = Math.round(g.actual_minutes % 60);
+        return `<div class="goal-item">
+            <div class="goal-header">
+                <span>${g.target} <span class="goal-type">(${typeLabel} ${hrs}h${mins}m)</span></span>
+                <span>${actualHrs}h${actualMins}m / ${hrs}h${mins}m ${g.achieved ? '✅' : '❌'}</span>
+            </div>
+            <div class="goal-bar"><div class="goal-fill ${cls}" style="width:${Math.min(pct, 100)}%">${g.rate.toFixed(0)}%</div></div>
+        </div>`;
+    }).join('');
+}
+loadGoals();
+</script>
+{% endblock %}

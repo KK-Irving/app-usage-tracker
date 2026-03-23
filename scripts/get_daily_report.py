@@ -43,7 +43,17 @@ def get_time_block(hour):
 
 
 def load_date_data(date_str):
-    """加载指定日期的数据"""
+    """加载指定日期的数据（优先使用 DataStore）"""
+    try:
+        from scripts.data_store import DataStore
+        store = DataStore()
+        records = store.get_usage_records(date_str)
+        store.close()
+        if records:
+            return {"date": date_str, "records": records}
+    except Exception:
+        pass
+    # 回退到 JSON 文件
     data_file = DATA_DIR / f"usage_{date_str}.json"
     if data_file.exists():
         with open(data_file, 'r', encoding='utf-8') as f:
@@ -323,15 +333,100 @@ def generate_report(date_str=None):
     else:
         report.append("未检测到明显空闲时段")
 
-    # 8. 建议
+    # 8. 建议（V2: 使用 SuggestionEngine）
     report.append("\n" + "=" * 70)
     report.append("💡 建议")
     report.append("=" * 70)
-    if suggestions:
-        for s in suggestions:
-            report.append(s)
-    else:
-        report.append("暂无建议，继续保持！")
+    try:
+        from scripts.data_store import DataStore
+        from scripts.suggestion_engine import SuggestionEngine
+        store = DataStore()
+        engine = SuggestionEngine(store)
+        v2_suggestions = engine.get_suggestions_or_fallback()
+        store.close()
+        for s in v2_suggestions:
+            report.append(f"  [{s.type}] {s.content}" + (f" (置信度: {s.confidence}%)" if s.confidence > 0 else ""))
+    except Exception:
+        if suggestions:
+            for s in suggestions:
+                report.append(s)
+        else:
+            report.append("暂无建议，继续保持！")
+
+    # 9. V2: 目标达成率
+    try:
+        from scripts.data_store import DataStore
+        from scripts.goal_manager import GoalManager
+        store = DataStore()
+        gm = GoalManager(store)
+        goal_results = gm.evaluate(date_str)
+        store.close()
+        if goal_results:
+            report.append("\n" + "=" * 70)
+            report.append("🎯 目标达成率")
+            report.append("=" * 70)
+            for r in goal_results:
+                g = r["goal"]
+                status = "✅ 达成" if r["achieved"] else "❌ 未达成"
+                type_label = "≥" if g.goal_type == "min" else "≤"
+                report.append(f"  {g.target} ({type_label}{int(g.minutes)}min): "
+                              f"实际 {int(r['actual_minutes'])}min, "
+                              f"达成率 {r['achievement_rate']:.0f}% {status}")
+    except Exception:
+        pass
+
+    # 10. V2: 切换分析
+    try:
+        from scripts.data_store import DataStore
+        from scripts.switch_analyzer import SwitchAnalyzer
+        store = DataStore()
+        sa = SwitchAnalyzer(store)
+        hourly = sa.get_hourly_switch_counts(date_str)
+        cost = sa.get_context_switch_cost(date_str)
+        top_pairs = sa.get_top_switch_pairs(date_str)
+        store.close()
+        if hourly:
+            report.append("\n" + "=" * 70)
+            report.append("🔄 应用切换分析")
+            report.append("=" * 70)
+            total_switches = sum(hourly.values())
+            report.append(f"  总切换次数: {total_switches}")
+            report.append(f"  上下文切换成本: {cost:.0f} 分钟")
+            if top_pairs:
+                report.append("  Top 切换对:")
+                for f_app, t_app, cnt in top_pairs[:5]:
+                    report.append(f"    {f_app} ↔ {t_app}: {cnt} 次")
+    except Exception:
+        pass
+
+    # 11. V2: 项目时间分布
+    try:
+        from scripts.data_store import DataStore
+        from scripts.project_tracker import ProjectTracker
+        store = DataStore()
+        pt = ProjectTracker(store)
+        proj_report = pt.get_project_report(date_str)
+        store.close()
+        if proj_report:
+            report.append("\n" + "=" * 70)
+            report.append("📁 项目时间分布")
+            report.append("=" * 70)
+            for p in proj_report:
+                hrs = int(p["minutes"] // 60)
+                mins = int(p["minutes"] % 60)
+                report.append(f"  {p['name']:<20} {hrs}h {mins}m ({p['pct']:.1f}%)")
+    except Exception:
+        pass
+
+    # 12. V2: 前台/后台时间
+    fg_total = sum(r.get("foreground_minutes", 0) for r in records)
+    bg_total = total_duration - fg_total
+    if fg_total > 0:
+        report.append("\n" + "=" * 70)
+        report.append("🖥️ 前台/后台时间")
+        report.append("=" * 70)
+        report.append(f"  前台活跃: {int(fg_total//60)}h {int(fg_total%60)}m")
+        report.append(f"  后台运行: {int(bg_total//60)}h {int(bg_total%60)}m")
 
     report.append("\n" + "=" * 70)
     return "\n".join(report)

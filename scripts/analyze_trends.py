@@ -17,7 +17,16 @@ REPORT_DIR = DATA_DIR / "reports"
 
 
 def load_data(date):
-    """加载指定日期的数据"""
+    """加载指定日期的数据（优先使用 DataStore）"""
+    try:
+        from scripts.data_store import DataStore
+        store = DataStore()
+        records = store.get_usage_records(date)
+        store.close()
+        if records:
+            return {"date": date, "records": records}
+    except Exception:
+        pass
     data_file = DATA_DIR / f"usage_{date}.json"
     if data_file.exists():
         with open(data_file, 'r', encoding='utf-8') as f:
@@ -117,6 +126,24 @@ def generate_weekly_report():
 
     if not last_data:
         report.append("\n⚠️ 上周无数据，仅展示本周数据")
+
+    # V2: 目标达成趋势
+    try:
+        from scripts.data_store import DataStore
+        from scripts.goal_manager import GoalManager
+        store = DataStore()
+        gm = GoalManager(store)
+        weekly_goals = gm.evaluate_weekly()
+        store.close()
+        if weekly_goals:
+            report.append("\n🎯 目标达成趋势 (过去7天):")
+            for wg in weekly_goals:
+                g = wg["goal"]
+                days = wg["achievement_days"]
+                bar = "".join("✅" if d else "❌" for d in wg["daily_achieved"])
+                report.append(f"   {g.target}: {bar} ({days}/7天)")
+    except Exception:
+        pass
 
     report_text = "\n".join(report)
     print(report_text)
